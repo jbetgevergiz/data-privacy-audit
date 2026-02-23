@@ -30,11 +30,11 @@ export default function Home() {
   const [data, setData] = useState<PrivacyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState("Scanning...");
-  const [scrollProgress, setScrollProgress] = useState(0);
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [popupDismissed, setPopupDismissed] = useState(false);
   const [email, setEmail] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -99,6 +99,159 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // Draw animated map background
+  useEffect(() => {
+    if (!canvasRef.current || !data?.geolocation) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let animationFrame: number;
+    let time = 0;
+
+    const drawMap = () => {
+      // Dark background
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Grid overlay
+      ctx.strokeStyle = "rgba(0, 200, 100, 0.03)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < canvas.width; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+      }
+      for (let i = 0; i < canvas.height; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+        ctx.stroke();
+      }
+
+      // Animated network lines
+      ctx.strokeStyle = "rgba(0, 255, 150, 0.15)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        const offset = (time * 0.3 + i * 80) % canvas.width;
+        ctx.beginPath();
+        ctx.moveTo(offset - 100, 0);
+        ctx.quadraticCurveTo(
+          offset,
+          canvas.height / 2,
+          offset - 100,
+          canvas.height
+        );
+        ctx.stroke();
+      }
+
+      // Convert lat/lng to canvas coordinates (simple mercator projection)
+      const toCanvasCoords = (lat: number, lng: number) => {
+        const x = ((lng + 180) / 360) * canvas.width;
+        const y =
+          ((90 - lat) / 180) *
+          canvas.height;
+        return { x, y };
+      };
+
+      const userPos = toCanvasCoords(
+        data.geolocation!.latitude,
+        data.geolocation!.longitude
+      );
+
+      // Add light pollution effect around user
+      const gradient = ctx.createRadialGradient(
+        userPos.x,
+        userPos.y,
+        0,
+        userPos.x,
+        userPos.y,
+        200
+      );
+      gradient.addColorStop(0, "rgba(0, 255, 150, 0.4)");
+      gradient.addColorStop(0.5, "rgba(0, 200, 100, 0.15)");
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(userPos.x - 200, userPos.y - 200, 400, 400);
+
+      // Add some random city lights around the map
+      ctx.fillStyle = "rgba(255, 150, 0, 0.6)";
+      const cities = [
+        { lat: 40.7128, lng: -74.006, size: 8 },
+        { lat: 51.5074, lng: -0.1278, size: 7 },
+        { lat: 35.6762, lng: 139.6503, size: 8 },
+        { lat: 48.8566, lng: 2.3522, size: 6 },
+        { lat: -33.8688, lng: 151.2093, size: 6 },
+      ];
+
+      for (const city of cities) {
+        const pos = toCanvasCoords(city.lat, city.lng);
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, city.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glow effect
+        const cityGradient = ctx.createRadialGradient(
+          pos.x,
+          pos.y,
+          0,
+          pos.x,
+          pos.y,
+          city.size * 3
+        );
+        cityGradient.addColorStop(0, "rgba(255, 150, 0, 0.4)");
+        cityGradient.addColorStop(1, "rgba(255, 150, 0, 0)");
+        ctx.fillStyle = cityGradient;
+        ctx.fillRect(pos.x - city.size * 3, pos.y - city.size * 3, city.size * 6, city.size * 6);
+      }
+
+      // User pin with pulsing glow
+      const pulseSize = 4 + Math.sin(time * 0.02) * 2;
+      ctx.fillStyle = "rgba(0, 255, 150, 1)";
+      ctx.beginPath();
+      ctx.arc(userPos.x, userPos.y, pulseSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer glow
+      ctx.strokeStyle = "rgba(0, 255, 150, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(userPos.x, userPos.y, pulseSize + 8, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Scan lines effect
+      ctx.strokeStyle = "rgba(0, 255, 150, 0.1)";
+      ctx.lineWidth = 1;
+      const scanOffset = (time * 2) % canvas.height;
+      ctx.beginPath();
+      ctx.moveTo(0, scanOffset);
+      ctx.lineTo(canvas.width, scanOffset);
+      ctx.stroke();
+
+      time++;
+      animationFrame = requestAnimationFrame(drawMap);
+    };
+
+    drawMap();
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [data]);
+
   // Cycle greeting
   useEffect(() => {
     if (!data) return;
@@ -132,8 +285,6 @@ export default function Home() {
       const scrolled = window.scrollY;
       const progress = scrollHeight > 0 ? scrolled / scrollHeight : 0;
 
-      setScrollProgress(progress);
-
       if (progress > 0.5 && !showEmailPopup && !popupDismissed) {
         setShowEmailPopup(true);
       }
@@ -158,6 +309,7 @@ export default function Home() {
   if (loading) {
     return (
       <div style={styles.container}>
+        <canvas ref={canvasRef} style={styles.canvas} />
         <div style={styles.loadingScreen}>
           <div style={styles.loadingDot} />
           <p>Discovering your digital footprint...</p>
@@ -168,6 +320,8 @@ export default function Home() {
 
   return (
     <div ref={containerRef} style={styles.container}>
+      <canvas ref={canvasRef} style={styles.canvas} />
+
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -181,47 +335,10 @@ export default function Home() {
           0%, 100% { opacity: 0.5; }
           50% { opacity: 1; }
         }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        @keyframes particle {
-          0% { opacity: 0; transform: translateY(0) scale(0); }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { opacity: 0; transform: translateY(-100px) scale(1); }
-        }
         .fadeIn { animation: fadeIn 0.8s ease-out; }
         .slideUp { animation: slideUp 0.6s ease-out; }
         .pulse { animation: pulse 2s ease-in-out infinite; }
-        .floating { animation: float 3s ease-in-out infinite; }
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 20px rgba(0, 200, 255, 0.3); }
-          50% { box-shadow: 0 0 40px rgba(0, 200, 255, 0.6); }
-        }
-        .glow { animation: glow 3s ease-in-out infinite; }
       `}</style>
-
-      {/* Animated Background */}
-      <div style={styles.backgroundWrapper}>
-        <svg style={styles.backgroundSVG} viewBox="0 0 1000 1000" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0a0e27" />
-              <stop offset="50%" stopColor="#1a1a3e" />
-              <stop offset="100%" stopColor="#0f1a2e" />
-            </linearGradient>
-            <filter id="blur">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
-            </filter>
-          </defs>
-          <rect width="1000" height="1000" fill="url(#grad1)" />
-          <circle cx="100" cy="100" r="200" fill="#0099ff" opacity="0.05" filter="url(#blur)" />
-          <circle cx="800" cy="800" r="300" fill="#ff006e" opacity="0.05" filter="url(#blur)" />
-          <circle cx="500" cy="500" r="250" fill="#00d9ff" opacity="0.03" filter="url(#blur)" />
-        </svg>
-        <div style={styles.parallaxOverlay} />
-      </div>
 
       {/* Hero Section */}
       <section style={styles.hero}>
@@ -229,7 +346,7 @@ export default function Home() {
           {greeting}
         </h1>
         <p style={styles.subheading}>
-          Your privacy is being exploited right now. See exactly how.
+          Your position is marked. Your privacy is exposed.
         </p>
       </section>
 
@@ -239,10 +356,10 @@ export default function Home() {
       {/* IP Location Section */}
       <section style={styles.section} className="slideUp">
         <div style={styles.sectionContent}>
-          <div style={styles.sectionLabel}>EXPOSED DATA #1</div>
-          <h2 style={styles.sectionTitle}>Your Location is Tracked</h2>
+          <div style={styles.sectionLabel}>EXPOSURE #1</div>
+          <h2 style={styles.sectionTitle}>You're Geolocated</h2>
           <p style={styles.sectionDescription}>
-            Every website knows exactly where you are. Your ISP broadcasts it. Your device confirms it.
+            Your coordinates are broadcast to every website you visit.
           </p>
           
           <div style={styles.card}>
@@ -273,7 +390,7 @@ export default function Home() {
           </div>
 
           <div style={styles.warning}>
-            ⚠️ Your ISP knows every website you visit. Even a VPN can't hide this through WebRTC leaks.
+            ⚠️ Your ISP tracks every site you visit. WebRTC leaks your real IP even behind a VPN.
           </div>
         </div>
       </section>
@@ -284,15 +401,15 @@ export default function Home() {
       {/* Browser Fingerprint Section */}
       <section style={styles.section} className="slideUp">
         <div style={styles.sectionContent}>
-          <div style={styles.sectionLabel}>EXPOSED DATA #2</div>
+          <div style={styles.sectionLabel}>EXPOSURE #2</div>
           <h2 style={styles.sectionTitle}>You're Uniquely Identifiable</h2>
           <p style={styles.sectionDescription}>
-            This combination of traits is almost unique to you across the entire internet.
+            This combination of traits is 1 in millions across the internet.
           </p>
           
           <div style={styles.card}>
             <div style={styles.dataPoint}>
-              <span style={styles.label}>Browser Signature</span>
+              <span style={styles.label}>Browser</span>
               <span style={styles.value}>{data?.fingerprint.browser}</span>
             </div>
             <div style={styles.dataPoint}>
@@ -308,13 +425,13 @@ export default function Home() {
               <span style={styles.value}>{data?.fingerprint.timezone}</span>
             </div>
             <div style={styles.dataPoint}>
-              <span style={styles.label}>Installed System Fonts</span>
-              <span style={styles.value}>{data?.fingerprint.fonts} fonts</span>
+              <span style={styles.label}>System Fonts</span>
+              <span style={styles.value}>{data?.fingerprint.fonts} fonts detected</span>
             </div>
           </div>
 
           <div style={styles.warning}>
-            ⚠️ 1 in 10 million browsers have your exact fingerprint combination. You're permanently tracked.
+            ⚠️ 1 in 10 million browsers match your fingerprint. You're permanently tracked.
           </div>
         </div>
       </section>
@@ -325,10 +442,10 @@ export default function Home() {
       {/* Stored Data Section */}
       <section style={styles.section} className="slideUp">
         <div style={styles.sectionContent}>
-          <div style={styles.sectionLabel}>EXPOSED DATA #3</div>
-          <h2 style={styles.sectionTitle}>Your Data is Being Harvested</h2>
+          <div style={styles.sectionLabel}>EXPOSURE #3</div>
+          <h2 style={styles.sectionTitle}>Your Data is Harvested</h2>
           <p style={styles.sectionDescription}>
-            Websites store persistent tracking tokens on your device. They use these to build your profile.
+            Websites store persistent tracking tokens. You can't delete them.
           </p>
           
           <div style={styles.card}>
@@ -343,7 +460,7 @@ export default function Home() {
           </div>
 
           <div style={styles.warning}>
-            ⚠️ These tracking IDs follow you across the entire internet. They build a complete profile of your behavior.
+            ⚠️ These tracking IDs follow you everywhere. They build a complete behavioral profile.
           </div>
         </div>
       </section>
@@ -354,32 +471,32 @@ export default function Home() {
       {/* The Real Problem */}
       <section style={styles.section} className="slideUp">
         <div style={styles.sectionContent}>
-          <div style={styles.sectionLabel}>THE REALITY</div>
-          <h2 style={styles.sectionTitle}>What This Means For You</h2>
+          <div style={styles.sectionLabel}>THE THREAT</div>
+          <h2 style={styles.sectionTitle}>What Happens to Your Data</h2>
           
           <div style={styles.problemGrid}>
             <div style={styles.problemCard}>
               <div style={styles.problemIcon}>📊</div>
-              <div style={styles.problemTitle}>Your Profile is Sold</div>
-              <p>Data brokers sell your information to advertisers, landlords, employers, and strangers.</p>
+              <div style={styles.problemTitle}>Sold to Brokers</div>
+              <p>Your profile is worth money. Data brokers sell it to anyone with cash.</p>
             </div>
             
             <div style={styles.problemCard}>
               <div style={styles.problemIcon}>👁️</div>
-              <div style={styles.problemTitle}>Constant Surveillance</div>
-              <p>Ad networks track you across 10,000+ websites simultaneously, building a complete profile.</p>
+              <div style={styles.problemTitle}>Constant Tracking</div>
+              <p>Ad networks track you across 10,000+ sites simultaneously.</p>
             </div>
             
             <div style={styles.problemCard}>
-              <div style={styles.problemIcon}>🔓</div>
-              <div style={styles.problemTitle}>VPN Doesn't Help</div>
-              <p>Browser fingerprinting and WebRTC leaks expose your real IP even behind a VPN.</p>
+              <div style={styles.problemIcon}>🚨</div>
+              <div style={styles.problemTitle}>Real IP Exposed</div>
+              <p>VPN doesn't help. WebRTC leaks your actual location.</p>
             </div>
             
             <div style={styles.problemCard}>
               <div style={styles.problemIcon}>⚡</div>
-              <div style={styles.problemTitle}>No Privacy Laws</div>
-              <p>Most countries don't protect you. Companies can collect and sell your data legally.</p>
+              <div style={styles.problemTitle}>No Legal Protection</div>
+              <p>Most countries don't protect you. It's legal to collect and sell your data.</p>
             </div>
           </div>
         </div>
@@ -394,7 +511,7 @@ export default function Home() {
           <div style={styles.popup} className="slideUp">
             <h3 style={styles.popupTitle}>Get Your Full Privacy Report</h3>
             <p style={styles.popupText}>
-              See exactly what's exposed about you and get a personalized action plan.
+              See exactly what's exposed and get a personalized action plan.
             </p>
             <form onSubmit={handleEmailSubmit} style={styles.form}>
               <input
@@ -425,9 +542,9 @@ export default function Home() {
       {/* CTA Section */}
       <section style={styles.ctaSection} className="slideUp">
         <div style={styles.ctaContent}>
-          <h2 style={styles.ctaTitle}>We Can Fix This</h2>
+          <h2 style={styles.ctaTitle}>Reclaim Your Privacy</h2>
           <p style={styles.ctaText}>
-            Real solutions to take back control of your privacy, secure your data, and stop being tracked.
+            Real solutions to take back control. Stop being tracked. Stop being sold.
           </p>
           <button style={styles.ctaButton}>See How We Fix This →</button>
         </div>
@@ -443,7 +560,7 @@ export default function Home() {
 
 const styles = {
   container: {
-    background: "#0a0e27",
+    background: "#000000",
     minHeight: "100vh",
     fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     color: "#e0e0e0",
@@ -451,47 +568,31 @@ const styles = {
     position: "relative" as const,
   } as React.CSSProperties,
 
-  backgroundWrapper: {
+  canvas: {
     position: "fixed" as const,
     top: 0,
     left: 0,
     width: "100%",
     height: "100%",
     zIndex: 0,
-    pointerEvents: "none",
-  } as React.CSSProperties,
-
-  backgroundSVG: {
-    width: "100%",
-    height: "100%",
-  } as React.CSSProperties,
-
-  parallaxOverlay: {
-    position: "absolute" as const,
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    background:
-      "radial-gradient(circle at 20% 50%, rgba(0, 200, 255, 0.1) 0%, transparent 50%)",
   } as React.CSSProperties,
 
   loadingScreen: {
+    position: "relative" as const,
+    zIndex: 1,
     display: "flex",
     flexDirection: "column" as const,
     alignItems: "center",
     justifyContent: "center",
     minHeight: "100vh",
     gap: "20px",
-    position: "relative" as const,
-    zIndex: 1,
   } as React.CSSProperties,
 
   loadingDot: {
     width: "12px",
     height: "12px",
     borderRadius: "50%",
-    backgroundColor: "#00d9ff",
+    backgroundColor: "#00ff96",
     animation: "pulse 2s ease-in-out infinite",
   } as React.CSSProperties,
 
@@ -513,14 +614,13 @@ const styles = {
     margin: "0 0 20px",
     maxWidth: "900px",
     lineHeight: "1.1",
-    background: "linear-gradient(45deg, #00d9ff, #0099ff)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
+    color: "#00ff96",
+    textShadow: "0 0 20px rgba(0, 255, 150, 0.5)",
   } as React.CSSProperties,
 
   subheading: {
     fontSize: "24px",
-    color: "#aaa",
+    color: "#888",
     margin: "0",
     maxWidth: "700px",
     fontWeight: "400",
@@ -539,6 +639,8 @@ const styles = {
     padding: "120px 40px",
     maxWidth: "1000px",
     margin: "0 auto",
+    background: "rgba(0, 0, 0, 0.4)",
+    backdropFilter: "blur(5px)",
   } as React.CSSProperties,
 
   sectionContent: {
@@ -547,7 +649,7 @@ const styles = {
 
   sectionLabel: {
     fontSize: "12px",
-    color: "#00d9ff",
+    color: "#00ff96",
     fontWeight: "700",
     marginBottom: "12px",
     textTransform: "uppercase" as const,
@@ -570,8 +672,8 @@ const styles = {
   } as React.CSSProperties,
 
   card: {
-    background: "rgba(255, 255, 255, 0.03)",
-    border: "1px solid rgba(0, 217, 255, 0.2)",
+    background: "rgba(0, 255, 150, 0.05)",
+    border: "1px solid rgba(0, 255, 150, 0.25)",
     borderRadius: "12px",
     padding: "32px",
     marginBottom: "24px",
@@ -583,7 +685,7 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "16px 0",
-    borderBottom: "1px solid rgba(0, 217, 255, 0.1)",
+    borderBottom: "1px solid rgba(0, 255, 150, 0.1)",
   } as React.CSSProperties,
 
   label: {
@@ -595,7 +697,7 @@ const styles = {
   value: {
     fontSize: "16px",
     fontWeight: "600",
-    color: "#00d9ff",
+    color: "#00ff96",
     fontFamily: "monospace",
     textAlign: "right" as const,
   } as React.CSSProperties,
@@ -618,8 +720,8 @@ const styles = {
   } as React.CSSProperties,
 
   problemCard: {
-    background: "rgba(255, 255, 255, 0.03)",
-    border: "1px solid rgba(0, 217, 255, 0.15)",
+    background: "rgba(0, 255, 150, 0.05)",
+    border: "1px solid rgba(0, 255, 150, 0.2)",
     borderRadius: "12px",
     padding: "24px",
     backdropFilter: "blur(10px)",
@@ -643,7 +745,7 @@ const styles = {
     left: 0,
     width: "100%",
     height: "100%",
-    background: "rgba(0, 0, 0, 0.7)",
+    background: "rgba(0, 0, 0, 0.8)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -651,21 +753,21 @@ const styles = {
   } as React.CSSProperties,
 
   popup: {
-    background: "#1a1a2e",
+    background: "#0a0a15",
     borderRadius: "16px",
     padding: "40px",
     maxWidth: "420px",
     width: "90%",
-    boxShadow: "0 20px 60px rgba(0, 217, 255, 0.2)",
+    boxShadow: "0 0 40px rgba(0, 255, 150, 0.3)",
     position: "relative" as const,
-    border: "1px solid rgba(0, 217, 255, 0.2)",
+    border: "1px solid rgba(0, 255, 150, 0.3)",
   } as React.CSSProperties,
 
   popupTitle: {
     fontSize: "28px",
     fontWeight: "700",
     margin: "0 0 12px",
-    color: "#ffffff",
+    color: "#00ff96",
   } as React.CSSProperties,
 
   popupText: {
@@ -684,16 +786,16 @@ const styles = {
   input: {
     padding: "12px 16px",
     borderRadius: "8px",
-    border: "1px solid rgba(0, 217, 255, 0.3)",
+    border: "1px solid rgba(0, 255, 150, 0.4)",
     fontSize: "14px",
     fontFamily: "inherit",
-    background: "rgba(255, 255, 255, 0.05)",
+    background: "rgba(0, 255, 150, 0.03)",
     color: "#ffffff",
   } as React.CSSProperties,
 
   submitButton: {
     padding: "14px 20px",
-    background: "linear-gradient(45deg, #00d9ff, #0099ff)",
+    background: "linear-gradient(45deg, #00ff96, #00cc77)",
     color: "#000",
     border: "none",
     borderRadius: "8px",
@@ -719,6 +821,8 @@ const styles = {
     zIndex: 1,
     padding: "120px 40px",
     textAlign: "center" as const,
+    background: "rgba(0, 0, 0, 0.4)",
+    backdropFilter: "blur(5px)",
   } as React.CSSProperties,
 
   ctaContent: {
@@ -730,9 +834,7 @@ const styles = {
     fontSize: "56px",
     fontWeight: "700",
     margin: "0 0 20px",
-    background: "linear-gradient(45deg, #00d9ff, #00ff88)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
+    color: "#00ff96",
   } as React.CSSProperties,
 
   ctaText: {
@@ -744,7 +846,7 @@ const styles = {
 
   ctaButton: {
     padding: "18px 48px",
-    background: "linear-gradient(45deg, #00d9ff, #0099ff)",
+    background: "linear-gradient(45deg, #00ff96, #00cc77)",
     color: "#000",
     border: "none",
     borderRadius: "8px",
@@ -761,6 +863,6 @@ const styles = {
     textAlign: "center" as const,
     fontSize: "14px",
     color: "#666",
-    borderTop: "1px solid rgba(0, 217, 255, 0.1)",
+    borderTop: "1px solid rgba(0, 255, 150, 0.1)",
   } as React.CSSProperties,
 };
