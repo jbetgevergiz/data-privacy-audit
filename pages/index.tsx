@@ -57,7 +57,7 @@ export default function Home() {
         .join(", ") || "None",
       hardwareConcurrency: navigator.hardwareConcurrency?.toString() || "Unknown",
       deviceMemory:
-        (navigator.deviceMemory?.toString() || "Unknown") + " GB",
+        ((navigator as any).deviceMemory?.toString() || "Unknown") + " GB",
       canvasFingerprint: getCanvasFingerprint(),
       doNotTrack: navigator.doNotTrack || "Not set",
     };
