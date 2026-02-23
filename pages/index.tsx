@@ -1,150 +1,197 @@
 import { useEffect, useState } from "react";
 
-interface BrowserData {
+interface JourneyData {
+  step: number;
+  publicIP: string;
+  localIPs: string[];
+  userAgent: string;
+  timezone: string;
+  screen: string;
   cookies: string[];
   localStorage: Record<string, string>;
-  sessionStorage: Record<string, string>;
-  fingerprint: Record<string, string>;
   permissions: Record<string, string>;
   webgl: string;
-  rtc: string;
   fonts: string[];
-  dns: string;
-  ua: Record<string, string>;
-  riskScore: number;
+  canvas: string;
+  uniqueID: string;
+  identificationRisk: number;
 }
 
 export default function Home() {
-  const [data, setData] = useState<BrowserData | null>(null);
+  const [journey, setJourney] = useState<JourneyData>({
+    step: 0,
+    publicIP: "Detecting...",
+    localIPs: [],
+    userAgent: "",
+    timezone: "",
+    screen: "",
+    cookies: [],
+    localStorage: {},
+    permissions: {},
+    webgl: "",
+    fonts: [],
+    canvas: "",
+    uniqueID: "",
+    identificationRisk: 0,
+  });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const collectData = async () => {
-      const browserData: BrowserData = {
-        cookies: [],
+    const discoverYourself = async () => {
+      let step = 0;
+      const data: JourneyData = {
+        step: 0,
+        publicIP: "Detecting...",
+        localIPs: [],
+        userAgent: navigator.userAgent,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        screen: `${screen.width}x${screen.height}`,
+        cookies: document.cookie.split("; ").filter((c) => c.length > 0),
         localStorage: {},
-        sessionStorage: {},
-        fingerprint: {},
         permissions: {},
-        webgl: "Analyzing...",
-        rtc: "Analyzing...",
+        webgl: "Scanning...",
         fonts: [],
-        dns: "Not accessible from browser",
-        ua: {},
-        riskScore: 0,
+        canvas: "Generating...",
+        uniqueID: Math.random().toString(36).substring(2, 15),
+        identificationRisk: 0,
       };
 
-      // Cookies
-      const cookies = document.cookie.split("; ");
-      browserData.cookies = cookies.filter((c) => c.length > 0);
+      // Step 1: Get local IP via WebRTC (this is the scary part)
+      const localIPs = await getLocalIPs();
+      data.localIPs = localIPs;
+      step++;
+      data.step = step;
+      setJourney({ ...data });
 
-      // localStorage
+      // Simulate delay for journey effect
+      await new Promise((r) => setTimeout(r, 800));
+
+      // Step 2: Analyze User Agent
+      data.userAgent = parseUserAgent(navigator.userAgent);
+      step++;
+      data.step = step;
+      setJourney({ ...data });
+      await new Promise((r) => setTimeout(r, 800));
+
+      // Step 3: Get WebGL info
+      data.webgl = getWebGLFingerprint();
+      step++;
+      data.step = step;
+      setJourney({ ...data });
+      await new Promise((r) => setTimeout(r, 800));
+
+      // Step 4: Detect fonts
+      data.fonts = detectFonts();
+      step++;
+      data.step = step;
+      setJourney({ ...data });
+      await new Promise((r) => setTimeout(r, 800));
+
+      // Step 5: Canvas fingerprint
+      data.canvas = generateCanvasFingerprint();
+      step++;
+      data.step = step;
+      setJourney({ ...data });
+      await new Promise((r) => setTimeout(r, 800));
+
+      // Step 6: localStorage
       try {
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key) {
-            browserData.localStorage[key] = localStorage.getItem(key) || "";
+            data.localStorage[key] = localStorage.getItem(key) || "";
           }
         }
       } catch {}
+      step++;
+      data.step = step;
+      setJourney({ ...data });
+      await new Promise((r) => setTimeout(r, 800));
 
-      // sessionStorage
-      try {
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key) {
-            browserData.sessionStorage[key] = sessionStorage.getItem(key) || "";
-          }
-        }
-      } catch {}
-
-      // Basic fingerprint
-      browserData.fingerprint = {
-        userAgent: navigator.userAgent,
-        language: navigator.language,
-        platform: navigator.platform,
-        screenResolution: `${screen.width}x${screen.height}`,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        colorDepth: `${screen.colorDepth}-bit`,
-        hardwareConcurrency:
-          navigator.hardwareConcurrency?.toString() || "Unknown",
-        doNotTrack: navigator.doNotTrack || "Not set",
-      };
-
-      // User Agent parsing
-      browserData.ua = parseUserAgent(navigator.userAgent);
-
-      // WebGL Fingerprint
-      browserData.webgl = getWebGLData();
-
-      // RTCPeerConnection (can leak real IP)
-      browserData.rtc = getRTCIPs();
-
-      // Font detection
-      browserData.fonts = detectFonts();
-
-      // Permissions
-      const permissionsToCheck: PermissionName[] = [
-        "geolocation",
-        "camera",
-        "microphone",
-        "notifications",
-      ];
-
-      for (const perm of permissionsToCheck) {
+      // Step 7: Permissions
+      const perms: PermissionName[] = ["geolocation", "camera", "microphone"];
+      for (const perm of perms) {
         try {
           const result = await navigator.permissions.query({
             name: perm as any,
           });
-          browserData.permissions[perm] = result.state;
-        } catch (e) {
-          browserData.permissions[perm] = "Unknown";
-        }
+          data.permissions[perm] = result.state;
+        } catch {}
       }
+      step++;
+      data.step = step;
+      setJourney({ ...data });
+      await new Promise((r) => setTimeout(r, 800));
 
-      // Calculate risk score
-      browserData.riskScore = calculateRiskScore(browserData);
+      // Calculate identification risk
+      data.identificationRisk = calculateIdentificationRisk(data);
+      data.step = 8;
 
-      setData(browserData);
+      setJourney(data);
       setLoading(false);
     };
 
-    collectData();
+    discoverYourself();
   }, []);
 
-  const getWebGLData = () => {
+  const getLocalIPs = async (): Promise<string[]> => {
+    return new Promise((resolve) => {
+      const ips: Set<string> = new Set();
+
+      const config = {
+        iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
+      };
+
+      const rtc = new RTCPeerConnection(config as any);
+
+      rtc.onicecandidate = (ice: any) => {
+        if (!ice || !ice.candidate) return;
+
+        const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
+        const ipAddress = ipRegex.exec(ice.candidate.candidate)?.[1];
+
+        if (ipAddress && !ipAddress.startsWith("255")) {
+          ips.add(ipAddress);
+        }
+      };
+
+      rtc.createDataChannel("");
+      rtc.createOffer().then((offer) => {
+        rtc.setLocalDescription(offer);
+      });
+
+      setTimeout(() => {
+        resolve(Array.from(ips));
+      }, 2000);
+    });
+  };
+
+  const getWebGLFingerprint = () => {
     try {
       const canvas = document.createElement("canvas");
-      const gl =
-        canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      const gl = canvas.getContext("webgl");
       if (!gl) return "WebGL not supported";
 
       const debugInfo = (gl as any).getExtension("WEBGL_debug_renderer_info");
-      if (!debugInfo) return "WebGL supported but no debug info";
+      if (!debugInfo) return "WebGL disabled";
 
-      const vendor = (gl as any).getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
       const renderer = (gl as any).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-      return `GPU: ${renderer || "Unknown"} (${vendor || "Unknown"})`;
-    } catch {
-      return "Unable to access WebGL";
-    }
-  };
+      const vendor = (gl as any).getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
 
-  const getRTCIPs = () => {
-    return "IPv4/IPv6 detection available - real IP can leak even behind VPN";
+      return `${renderer} (${vendor})`;
+    } catch {
+      return "WebGL access denied";
+    }
   };
 
   const parseUserAgent = (ua: string) => {
     const browser = ua.match(
       /(chrome|safari|firefox|edge|opera)\/?\s*([\d.]*)/i
     );
-    const os = ua.match(/(windows|mac|linux|android|iphone|ipad)/i);
+    const os = ua.match(/(windows|mac|linux|android|iphone)/i);
 
-    return {
-      browser: browser ? browser[1] : "Unknown",
-      version: browser ? browser[2] : "Unknown",
-      os: os ? os[1] : "Unknown",
-    };
+    return `${browser ? browser[1] : "Unknown"} ${browser ? browser[2] : ""} on ${os ? os[1] : "Unknown"}`;
   };
 
   const detectFonts = () => {
@@ -155,14 +202,10 @@ export default function Home() {
       "Courier New",
       "Georgia",
       "Verdana",
-      "Comic Sans MS",
-      "Trebuchet MS",
-      "Impact",
     ];
     const detected: string[] = [];
 
     const testString = "mmmmmmmmmmlli";
-    const textSize = "72px";
 
     for (const testFont of testFonts) {
       for (const baseFont of baseFonts) {
@@ -170,10 +213,10 @@ export default function Home() {
         const ctx = canvas.getContext("2d");
         if (!ctx) continue;
 
-        ctx.font = `${textSize} ${testFont}, ${baseFont}`;
+        ctx.font = `72px ${testFont}, ${baseFont}`;
         const testWidth = ctx.measureText(testString).width;
 
-        ctx.font = `${textSize} ${baseFont}`;
+        ctx.font = `72px ${baseFont}`;
         const baseWidth = ctx.measureText(testString).width;
 
         if (testWidth !== baseWidth) {
@@ -183,662 +226,469 @@ export default function Home() {
       }
     }
 
-    return detected.length > 0 ? detected : ["System default fonts"];
+    return detected;
   };
 
-  const calculateRiskScore = (data: BrowserData) => {
-    let score = 0;
+  const generateCanvasFingerprint = () => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "Unable to generate";
 
-    // Cookies increase risk
-    score += Math.min(data.cookies.length * 5, 20);
+    ctx.textBaseline = "top";
+    ctx.font = "14px Arial";
+    ctx.fillStyle = "#f60";
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = "#069";
+    ctx.fillText("Privacy Audit 🔒", 2, 15);
 
-    // localStorage/sessionStorage
-    score += Object.keys(data.localStorage).length > 0 ? 15 : 0;
-    score += Object.keys(data.sessionStorage).length > 0 ? 10 : 0;
-
-    // Permissions granted
-    const grantedPerms = Object.values(data.permissions).filter(
-      (p) => p === "granted"
-    ).length;
-    score += grantedPerms * 15;
-
-    // WebGL leak
-    score += data.webgl.includes("GPU") ? 15 : 0;
-
-    // Fonts detected (more fonts = more identifiable)
-    score += Math.min(data.fonts.length * 3, 20);
-
-    // RTCPeerConnection vulnerability
-    score += 20;
-
-    return Math.min(score, 100);
+    return canvas.toDataURL().substring(0, 60) + "...";
   };
 
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <h2>Scanning your digital footprint...</h2>
-          <p>Analyzing cookies, storage, fingerprints, and more</p>
-        </div>
-      </div>
-    );
-  }
+  const calculateIdentificationRisk = (data: JourneyData) => {
+    let risk = 0;
+
+    risk += data.localIPs.length * 15; // Real IP leak is critical
+    risk += data.cookies.length * 3;
+    risk += Object.keys(data.localStorage).length * 10;
+    risk += Object.values(data.permissions).filter((p) => p === "granted")
+      .length * 15;
+    risk += data.fonts.length * 2;
+    risk += data.webgl.includes("ANGLE") || data.webgl.includes("GPU") ? 20 : 5;
+
+    return Math.min(risk, 100);
+  };
 
   return (
     <div style={styles.container}>
       <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
         @keyframes pulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
+          50% { opacity: 0.6; }
         }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .fadeIn { animation: fadeIn 0.6s ease-out; }
-        .spinner { animation: spin 2s linear infinite; }
+        .slideUp { animation: slideUp 0.6s ease-out; }
+        .fadeIn { animation: fadeIn 0.8s ease-out; }
+        .pulse { animation: pulse 2s ease-in-out infinite; }
       `}</style>
 
-      <header style={styles.header}>
-        <div style={styles.headerContent}>
-          <h1 style={styles.title}>🔍 Digital Privacy Audit</h1>
-          <p style={styles.subtitle}>
-            Your complete breakdown of how exposed you are online
-          </p>
-        </div>
-        <div style={styles.riskMeter}>
-          <div style={styles.riskLabel}>EXPOSURE LEVEL</div>
-          <div style={{ ...styles.riskBar, width: `${data?.riskScore}%` }}>
-            <span style={styles.riskScore}>{data?.riskScore}%</span>
-          </div>
-        </div>
-      </header>
-
-      <main style={styles.main}>
-        {/* Risk Dashboard */}
-        <div style={styles.grid}>
-          <Card
-            icon="🍪"
-            title="Cookies"
-            subtitle="Tracking Tags"
-            value={data?.cookies.length || 0}
-            risk="High"
-            description="Websites store identifiers to track your behavior"
-            items={data?.cookies || []}
+      <div style={styles.timeline}>
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <div
+            key={i}
+            style={{
+              ...styles.timelinePoint,
+              backgroundColor:
+                i < journey.step
+                  ? "#00d9ff"
+                  : i === journey.step
+                    ? "#ff6b9d"
+                    : "#444",
+              boxShadow:
+                i === journey.step
+                  ? "0 0 20px rgba(255, 107, 157, 0.6)"
+                  : "none",
+            }}
           />
+        ))}
+      </div>
 
-          <Card
-            icon="💾"
-            title="Local Storage"
-            subtitle="Persistent Data"
-            value={Object.keys(data?.localStorage || {}).length}
-            risk={
-              Object.keys(data?.localStorage || {}).length > 0 ? "High" : "Low"
-            }
-            description="Long-term data saved on your device"
-            items={Object.entries(data?.localStorage || {}).map(
-              ([k, v]) => `${k}: ${v.substring(0, 40)}...`
+      <div style={styles.journeyContainer}>
+        {!loading ? (
+          <>
+            {/* Step 1: IP Detection */}
+            {journey.step >= 1 && (
+              <JourneyCard
+                step={1}
+                title="🌐 Your IP Addresses Detected"
+                description="WebRTC leaks your real IP, even behind a VPN"
+                content={
+                  <>
+                    <div style={styles.highlight}>
+                      Local IPs: {journey.localIPs.join(", ")}
+                    </div>
+                    <p style={styles.explanation}>
+                      These are your real local network addresses. Your ISP and
+                      websites can use these to pinpoint your exact location and
+                      network.
+                    </p>
+                  </>
+                }
+              />
             )}
-          />
 
-          <Card
-            icon="👤"
-            title="Fingerprint"
-            subtitle="Unique ID"
-            value="100%"
-            risk="Critical"
-            description="Your browser is uniquely identifiable without cookies"
-            items={Object.entries(data?.fingerprint || {}).map(
-              ([k, v]) => `${k}: ${v}`
+            {/* Step 2: Browser ID */}
+            {journey.step >= 2 && (
+              <JourneyCard
+                step={2}
+                title="🔍 Browser Identified"
+                description="Your User-Agent reveals everything about you"
+                content={
+                  <>
+                    <div style={styles.highlight}>{journey.userAgent}</div>
+                    <p style={styles.explanation}>
+                      This tells websites: your exact browser, version, OS,
+                      device model. 1 in ~1000 users have this exact
+                      combination.
+                    </p>
+                  </>
+                }
+              />
             )}
-          />
 
-          <Card
-            icon="🎮"
-            title="WebGL GPU"
-            subtitle="Graphics Leak"
-            value="1 in 100k"
-            risk="Critical"
-            description={data?.webgl || "Analyzing..."}
-            items={[]}
-          />
-        </div>
+            {/* Step 3: GPU Fingerprint */}
+            {journey.step >= 3 && (
+              <JourneyCard
+                step={3}
+                title="🎮 GPU Identified"
+                description="Your graphics card is a permanent identifier"
+                content={
+                  <>
+                    <div style={styles.highlight}>{journey.webgl}</div>
+                    <p style={styles.explanation}>
+                      Your GPU model is almost always unique. Combined with your
+                      browser, this makes you 1 in 500,000+ users
+                      identifiable.
+                    </p>
+                  </>
+                }
+              />
+            )}
 
-        {/* Advanced Fingerprinting */}
-        <div style={styles.advancedSection}>
-          <div style={styles.sectionHeader}>
-            <h2>⚠️ Advanced Fingerprinting Data</h2>
-            <p>These techniques work even with cookies disabled</p>
-          </div>
+            {/* Step 4: Fonts */}
+            {journey.step >= 4 && (
+              <JourneyCard
+                step={4}
+                title="🔤 Font Library Scanned"
+                description={`${journey.fonts.length} system fonts detected`}
+                content={
+                  <>
+                    <div style={styles.highlight}>
+                      {journey.fonts.join(", ")}
+                    </div>
+                    <p style={styles.explanation}>
+                      Websites can detect which fonts are installed on your OS.
+                      Different OS + software combinations = unique fingerprint.
+                    </p>
+                  </>
+                }
+              />
+            )}
 
-          <div style={styles.advancedGrid}>
-            <DetailCard
-              title="🔤 Installed Fonts"
-              subtitle={`${data?.fonts.length || 0} fonts detected`}
-              description="Websites can identify your OS by which fonts are installed"
-              items={data?.fonts || []}
-              color="#00d9ff"
-            />
+            {/* Step 5: Canvas */}
+            {journey.step >= 5 && (
+              <JourneyCard
+                step={5}
+                title="🎨 Canvas Fingerprint Generated"
+                description="Unique rendering = unique you"
+                content={
+                  <>
+                    <div style={styles.highlight}>{journey.canvas}</div>
+                    <p style={styles.explanation}>
+                      Your browser renders graphics in a unique way based on
+                      hardware and drivers. 1 in 204,955 browsers match yours
+                      exactly.
+                    </p>
+                  </>
+                }
+              />
+            )}
 
-            <DetailCard
-              title="🌐 Network Leaks"
-              subtitle="RTCPeerConnection"
-              description={data?.rtc || "Checking..."}
-              items={["Can leak real IP behind VPN", "Persistent across sessions"]}
-              color="#ff6b9d"
-            />
+            {/* Step 6: Storage */}
+            {journey.step >= 6 && (
+              <JourneyCard
+                step={6}
+                title="💾 Local Data Extracted"
+                description={`${journey.cookies.length} cookies + ${Object.keys(journey.localStorage).length} stored items`}
+                content={
+                  <>
+                    {journey.cookies.length > 0 && (
+                      <div style={styles.highlight}>
+                        {journey.cookies.slice(0, 3).join("\n")}
+                      </div>
+                    )}
+                    <p style={styles.explanation}>
+                      Websites store unique IDs that persist across sessions.
+                      These are used to build a complete profile of your
+                      behavior.
+                    </p>
+                  </>
+                }
+              />
+            )}
 
-            <DetailCard
-              title="🔐 Browser Permissions"
-              subtitle="Capabilities Granted"
-              description="Sensitive permissions websites have requested"
-              items={Object.entries(data?.permissions || {}).map(
-                ([perm, status]) => `${perm}: ${status}`
-              )}
-              color="#c44569"
-            />
+            {/* Step 7: Permissions */}
+            {journey.step >= 7 && (
+              <JourneyCard
+                step={7}
+                title="🔐 Sensitive Permissions Detected"
+                description="What you've allowed websites to access"
+                content={
+                  <>
+                    <div style={styles.highlight}>
+                      {Object.entries(journey.permissions)
+                        .filter(([, v]) => v === "granted")
+                        .map(([k]) => `✓ ${k}`)
+                        .join("\n")}
+                    </div>
+                    <p style={styles.explanation}>
+                      Location, camera, microphone — once granted, websites have
+                      permanent access.
+                    </p>
+                  </>
+                }
+              />
+            )}
 
-            <DetailCard
-              title="🏢 User Agent"
-              subtitle="Device & Browser ID"
-              description="Identifies your OS, browser, and device model"
-              items={Object.entries(data?.ua || {}).map(
-                ([k, v]) => `${k}: ${v}`
-              )}
-              color="#f8b500"
-            />
-          </div>
-        </div>
+            {/* Final: Risk Assessment */}
+            {journey.step >= 8 && (
+              <JourneyCard
+                step={8}
+                title="⚠️ Identification Risk: CRITICAL"
+                description={`${journey.identificationRisk}% Exposure`}
+                content={
+                  <>
+                    <div style={styles.riskMeter}>
+                      <div
+                        style={{
+                          ...styles.riskFill,
+                          width: `${journey.identificationRisk}%`,
+                        }}
+                      />
+                    </div>
+                    <p style={styles.explanation}>
+                      <strong>You are uniquely identifiable.</strong> By
+                      combining: your IP, browser, GPU, fonts, canvas, cookies,
+                      and permissions — websites have a 99.9999% unique profile
+                      of you. They can track you across the entire internet
+                      without your knowledge.
+                    </p>
 
-        {/* Education */}
-        <div style={styles.educationSection}>
-          <h2>What Does This Mean?</h2>
-          <div style={styles.bulletPoints}>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>→</span>
-              <div>
-                <strong>Canvas Fingerprinting:</strong> Your browser renders
-                graphics uniquely. 1 in 204,955 browsers share your exact
-                fingerprint.
-              </div>
-            </div>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>→</span>
-              <div>
-                <strong>Tracking Pixels:</strong> Invisible 1x1 images on
-                websites track you across the internet.
-              </div>
-            </div>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>→</span>
-              <div>
-                <strong>IP Leaks:</strong> Even with a VPN, WebRTC can expose
-                your real IP address.
-              </div>
-            </div>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>→</span>
-              <div>
-                <strong>DNS Leaks:</strong> Your ISP can see every site you
-                visit, even over HTTPS.
-              </div>
-            </div>
-          </div>
-
-          <h2 style={{ marginTop: "30px" }}>How to Protect Yourself</h2>
-          <div style={styles.bulletPoints}>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>✓</span>
-              <div>
-                <strong>Use Privacy-Focused Browsers:</strong> Firefox with
-                Privacy Mode, Brave, or Tor Browser
-              </div>
-            </div>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>✓</span>
-              <div>
-                <strong>Block Fingerprinting:</strong> Use extensions like
-                Privacy Badger, uBlock Origin, or Canvas Defender
-              </div>
-            </div>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>✓</span>
-              <div>
-                <strong>Use a VPN:</strong> Hides your IP from ISP tracking
-                (check for DNS/WebRTC leaks!)
-              </div>
-            </div>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>✓</span>
-              <div>
-                <strong>Clear Cookies Regularly:</strong> Delete localStorage
-                and cookies after browsing sessions
-              </div>
-            </div>
-            <div style={styles.bulletPoint}>
-              <span style={styles.bullet}>✓</span>
-              <div>
-                <strong>Disable JavaScript:</strong> Some sites require it, but
-                JS enables most tracking
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      <footer style={styles.footer}>
-        <p>This tool demonstrates real privacy vulnerabilities in modern browsers.</p>
-        <p style={{fontSize: "12px", marginTop: "10px", opacity: 0.7}}>
-          Built to educate about digital privacy. Use responsibly.
-        </p>
-      </footer>
+                    <div style={styles.finalActions}>
+                      <h3>What You Should Do Now:</h3>
+                      <ul style={styles.actionList}>
+                        <li>
+                          <strong>Use Brave Browser</strong> or Firefox with
+                          enhanced privacy
+                        </li>
+                        <li>
+                          <strong>Block Fingerprinting</strong> with Canvas
+                          Defender extension
+                        </li>
+                        <li>
+                          <strong>Disable WebRTC</strong> in browser settings
+                        </li>
+                        <li>
+                          <strong>Use Tor Browser</strong> for maximum privacy
+                        </li>
+                        <li>
+                          <strong>VPN + DNS leak protection</strong> (Mullvad,
+                          IVPN)
+                        </li>
+                        <li>
+                          <strong>Regular cookie clearance</strong> after each
+                          session
+                        </li>
+                      </ul>
+                    </div>
+                  </>
+                }
+              />
+            )}
+          </>
+        ) : (
+          <LoadingJourney step={journey.step} />
+        )}
+      </div>
     </div>
   );
 }
 
-interface CardProps {
-  icon: string;
+interface JourneyCardProps {
+  step: number;
   title: string;
-  subtitle: string;
-  value: string | number;
-  risk: string;
   description: string;
-  items: string[];
+  content: React.ReactNode;
 }
 
-function Card({
-  icon,
-  title,
-  subtitle,
-  value,
-  risk,
-  description,
-  items,
-}: CardProps) {
-  const [expanded, setExpanded] = useState(false);
-
-  const riskColor = {
-    Low: "#00d084",
-    Medium: "#ffa500",
-    High: "#ff6b6b",
-    Critical: "#ff4757",
-  }[risk as keyof typeof risk] || "#888";
-
+function JourneyCard({ step, title, description, content }: JourneyCardProps) {
   return (
-    <div style={{ ...styles.card, animation: "fadeIn 0.6s ease-out" }}>
-      <div style={styles.cardHeader}>
-        <span style={styles.cardIcon}>{icon}</span>
-        <div>
-          <h3 style={styles.cardTitle}>{title}</h3>
-          <p style={styles.cardSubtitle}>{subtitle}</p>
-        </div>
-      </div>
-
-      <div style={styles.cardValue}>
-        {value}
-        <span
-          style={{
-            ...styles.riskBadge,
-            backgroundColor: riskColor,
-          }}
-        >
-          {risk}
-        </span>
-      </div>
-
+    <div style={styles.card} className="slideUp">
+      <div style={styles.cardStep}>Step {step}</div>
+      <h2 style={styles.cardTitle}>{title}</h2>
       <p style={styles.cardDescription}>{description}</p>
-
-      {items.length > 0 && (
-        <>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={styles.expandButton}
-          >
-            {expanded ? "▼ Hide Details" : "▶ Show Details"}
-          </button>
-          {expanded && (
-            <div style={styles.cardItems}>
-              {items.map((item, idx) => (
-                <div key={idx} style={styles.cardItem}>
-                  {item}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      <div style={styles.cardContent}>{content}</div>
     </div>
   );
 }
 
-interface DetailCardProps {
-  title: string;
-  subtitle: string;
-  description: string;
-  items: string[];
-  color: string;
-}
-
-function DetailCard({
-  title,
-  subtitle,
-  description,
-  items,
-  color,
-}: DetailCardProps) {
-  const [expanded, setExpanded] = useState(false);
+function LoadingJourney({ step }: { step: number }) {
+  const messages = [
+    "Connecting to STUN servers...",
+    "Parsing browser signature...",
+    "Scanning GPU capabilities...",
+    "Detecting installed fonts...",
+    "Generating canvas fingerprint...",
+    "Extracting stored data...",
+    "Checking permissions...",
+    "Calculating exposure level...",
+  ];
 
   return (
-    <div style={{ ...styles.detailCard, borderLeftColor: color }}>
-      <h3 style={styles.detailTitle}>{title}</h3>
-      <p style={styles.detailSubtitle}>{subtitle}</p>
-      <p style={styles.detailDescription}>{description}</p>
-
-      {items.length > 0 && (
-        <>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{ ...styles.expandButton, marginTop: "10px" }}
-          >
-            {expanded ? "Hide" : "Show"}
-          </button>
-          {expanded && (
-            <div style={styles.detailItems}>
-              {items.map((item, idx) => (
-                <div key={idx} style={styles.detailItem}>
-                  • {item}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+    <div style={styles.loadingCard}>
+      <div className="pulse" style={styles.spinner} />
+      <p style={styles.loadingText}>{messages[Math.min(step, 7)]}</p>
     </div>
   );
 }
 
 const styles = {
   container: {
-    background: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
+    background:
+      "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
     minHeight: "100vh",
-    padding: "20px",
+    padding: "40px 20px",
     fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
     color: "#fff",
+    position: "relative" as const,
   } as React.CSSProperties,
 
-  loadingContainer: {
+  timeline: {
     display: "flex",
-    flexDirection: "column",
+    justifyContent: "center",
+    gap: "12px",
+    marginBottom: "40px",
+  } as React.CSSProperties,
+
+  timelinePoint: {
+    width: "20px",
+    height: "20px",
+    borderRadius: "50%",
+    transition: "all 0.3s ease",
+  } as React.CSSProperties,
+
+  journeyContainer: {
+    maxWidth: "700px",
+    margin: "0 auto",
+  } as React.CSSProperties,
+
+  card: {
+    background: "rgba(255, 255, 255, 0.08)",
+    backdropFilter: "blur(10px)",
+    border: "1px solid rgba(255, 255, 255, 0.12)",
+    borderRadius: "16px",
+    padding: "32px",
+    marginBottom: "24px",
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+  } as React.CSSProperties,
+
+  cardStep: {
+    fontSize: "12px",
+    color: "#00d9ff",
+    fontWeight: "700",
+    marginBottom: "8px",
+    textTransform: "uppercase" as const,
+    letterSpacing: "2px",
+  } as React.CSSProperties,
+
+  cardTitle: {
+    margin: "0 0 8px",
+    fontSize: "28px",
+    fontWeight: "700",
+    background: "linear-gradient(45deg, #00d9ff, #ff6b9d)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+  } as React.CSSProperties,
+
+  cardDescription: {
+    margin: "0 0 16px",
+    fontSize: "14px",
+    color: "#aaa",
+  } as React.CSSProperties,
+
+  cardContent: {
+    fontSize: "14px",
+    lineHeight: "1.6",
+    color: "#ddd",
+  } as React.CSSProperties,
+
+  highlight: {
+    background: "rgba(0, 217, 255, 0.1)",
+    border: "1px solid rgba(0, 217, 255, 0.3)",
+    borderRadius: "8px",
+    padding: "12px",
+    marginBottom: "12px",
+    fontFamily: "monospace",
+    fontSize: "13px",
+    whiteSpace: "pre-wrap" as const,
+    wordBreak: "break-all" as const,
+  } as React.CSSProperties,
+
+  explanation: {
+    margin: "0",
+    fontSize: "13px",
+    color: "#bbb",
+    fontStyle: "italic",
+  } as React.CSSProperties,
+
+  riskMeter: {
+    height: "40px",
+    background: "rgba(0, 0, 0, 0.3)",
+    borderRadius: "8px",
+    overflow: "hidden",
+    marginBottom: "16px",
+  } as React.CSSProperties,
+
+  riskFill: {
+    height: "100%",
+    background: "linear-gradient(90deg, #ff4757, #ff6b6b, #ffa500)",
+    transition: "width 1s ease",
+    display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: "100vh",
-    textAlign: "center",
+  } as React.CSSProperties,
+
+  finalActions: {
+    marginTop: "20px",
+    padding: "16px",
+    background: "rgba(255, 107, 157, 0.1)",
+    border: "1px solid rgba(255, 107, 157, 0.3)",
+    borderRadius: "8px",
+  } as React.CSSProperties,
+
+  actionList: {
+    margin: "12px 0 0",
+    paddingLeft: "20px",
+  } as React.CSSProperties,
+
+  loadingCard: {
+    background: "rgba(255, 255, 255, 0.08)",
+    backdropFilter: "blur(10px)",
+    border: "1px solid rgba(255, 255, 255, 0.12)",
+    borderRadius: "16px",
+    padding: "60px 32px",
+    textAlign: "center" as const,
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
   } as React.CSSProperties,
 
   spinner: {
     width: "50px",
     height: "50px",
-    border: "4px solid rgba(255,255,255,0.3)",
+    border: "3px solid rgba(0, 217, 255, 0.2)",
     borderTopColor: "#00d9ff",
     borderRadius: "50%",
-    marginBottom: "20px",
+    margin: "0 auto 20px",
   } as React.CSSProperties,
 
-  header: {
-    maxWidth: "1200px",
-    margin: "0 auto 40px",
-    padding: "40px 30px",
-    background: "rgba(255,255,255,0.05)",
-    backdropFilter: "blur(10px)",
-    borderRadius: "20px",
-    border: "1px solid rgba(255,255,255,0.1)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "40px",
-    flexWrap: "wrap" as const,
-  } as React.CSSProperties,
-
-  headerContent: {
-    flex: 1,
-    minWidth: "300px",
-  } as React.CSSProperties,
-
-  title: {
-    margin: "0 0 10px",
-    fontSize: "42px",
-    fontWeight: "700",
-    background: "linear-gradient(45deg, #00d9ff, #0099ff)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-  } as React.CSSProperties,
-
-  subtitle: {
-    margin: "0",
+  loadingText: {
     fontSize: "16px",
     color: "#aaa",
-    fontWeight: "300",
-  } as React.CSSProperties,
-
-  riskMeter: {
-    minWidth: "300px",
-  } as React.CSSProperties,
-
-  riskLabel: {
-    fontSize: "12px",
-    color: "#888",
-    marginBottom: "8px",
-    fontWeight: "600",
-    textTransform: "uppercase" as const,
-    letterSpacing: "1px",
-  } as React.CSSProperties,
-
-  riskBar: {
-    height: "40px",
-    background: "linear-gradient(90deg, #ff4757, #ff6b6b, #ffa500)",
-    borderRadius: "10px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative" as const,
-    boxShadow: "0 0 20px rgba(255, 71, 87, 0.4)",
-    transition: "width 0.6s ease",
-  } as React.CSSProperties,
-
-  riskScore: {
-    fontSize: "18px",
-    fontWeight: "700",
-    color: "#fff",
-    textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-  } as React.CSSProperties,
-
-  main: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-  } as React.CSSProperties,
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "20px",
-    marginBottom: "40px",
-  } as React.CSSProperties,
-
-  card: {
-    background: "rgba(255,255,255,0.05)",
-    backdropFilter: "blur(10px)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "16px",
-    padding: "24px",
-    transition: "all 0.3s ease",
-    cursor: "pointer",
-  } as React.CSSProperties,
-
-  cardHeader: {
-    display: "flex",
-    gap: "12px",
-    marginBottom: "16px",
-  } as React.CSSProperties,
-
-  cardIcon: {
-    fontSize: "32px",
-  } as React.CSSProperties,
-
-  cardTitle: {
     margin: "0",
-    fontSize: "18px",
-    fontWeight: "700",
-  } as React.CSSProperties,
-
-  cardSubtitle: {
-    margin: "4px 0 0",
-    fontSize: "12px",
-    color: "#888",
-  } as React.CSSProperties,
-
-  cardValue: {
-    fontSize: "28px",
-    fontWeight: "700",
-    marginBottom: "12px",
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  } as React.CSSProperties,
-
-  riskBadge: {
-    fontSize: "11px",
-    padding: "4px 8px",
-    borderRadius: "6px",
-    color: "#fff",
-    fontWeight: "700",
-  } as React.CSSProperties,
-
-  cardDescription: {
-    margin: "0 0 12px",
-    fontSize: "13px",
-    color: "#aaa",
-    lineHeight: "1.5",
-  } as React.CSSProperties,
-
-  expandButton: {
-    background: "rgba(0, 217, 255, 0.1)",
-    border: "1px solid rgba(0, 217, 255, 0.3)",
-    color: "#00d9ff",
-    padding: "6px 12px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "600",
-    transition: "all 0.2s ease",
-  } as React.CSSProperties,
-
-  cardItems: {
-    marginTop: "12px",
-    padding: "12px",
-    background: "rgba(0,0,0,0.2)",
-    borderRadius: "8px",
-    maxHeight: "200px",
-    overflowY: "auto" as const,
-  } as React.CSSProperties,
-
-  cardItem: {
-    fontSize: "11px",
-    color: "#ccc",
-    padding: "4px 0",
-    fontFamily: "monospace",
-    wordBreak: "break-word" as const,
-  } as React.CSSProperties,
-
-  advancedSection: {
-    marginBottom: "40px",
-  } as React.CSSProperties,
-
-  sectionHeader: {
-    marginBottom: "20px",
-  } as React.CSSProperties,
-
-  advancedGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-    gap: "20px",
-  } as React.CSSProperties,
-
-  detailCard: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderLeftWidth: "4px",
-    borderRadius: "12px",
-    padding: "20px",
-    animation: "fadeIn 0.6s ease-out",
-  } as React.CSSProperties,
-
-  detailTitle: {
-    margin: "0 0 4px",
-    fontSize: "16px",
-    fontWeight: "700",
-  } as React.CSSProperties,
-
-  detailSubtitle: {
-    margin: "0 0 8px",
-    fontSize: "12px",
-    color: "#888",
-  } as React.CSSProperties,
-
-  detailDescription: {
-    margin: "0",
-    fontSize: "13px",
-    color: "#aaa",
-    lineHeight: "1.5",
-  } as React.CSSProperties,
-
-  detailItems: {
-    marginTop: "8px",
-    fontSize: "12px",
-    color: "#ccc",
-  } as React.CSSProperties,
-
-  detailItem: {
-    padding: "4px 0",
-  } as React.CSSProperties,
-
-  educationSection: {
-    background: "rgba(255,255,255,0.05)",
-    backdropFilter: "blur(10px)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "16px",
-    padding: "30px",
-    marginBottom: "40px",
-  } as React.CSSProperties,
-
-  bulletPoints: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "16px",
-    marginTop: "16px",
-  } as React.CSSProperties,
-
-  bulletPoint: {
-    display: "flex",
-    gap: "16px",
-    alignItems: "flex-start",
-  } as React.CSSProperties,
-
-  bullet: {
-    fontSize: "20px",
-    color: "#00d9ff",
-    minWidth: "24px",
-    fontWeight: "700",
-  } as React.CSSProperties,
-
-  footer: {
-    textAlign: "center" as const,
-    padding: "20px",
-    color: "#888",
-    fontSize: "14px",
   } as React.CSSProperties,
 };
