@@ -121,105 +121,158 @@ export default function Home() {
       return { x, y };
     };
 
+    const drawLine = (points: Array<{lat: number, lng: number}>) => {
+      if (points.length < 2) return;
+      ctx.beginPath();
+      const first = toCanvasCoords(points[0].lat, points[0].lng);
+      ctx.moveTo(first.x, first.y);
+      for (let i = 1; i < points.length; i++) {
+        const pos = toCanvasCoords(points[i].lat, points[i].lng);
+        ctx.lineTo(pos.x, pos.y);
+      }
+      ctx.stroke();
+    };
+
     const drawMap = () => {
       // Dark background
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw simplified world map coastlines
-      ctx.strokeStyle = "rgba(0, 150, 100, 0.4)";
+      ctx.strokeStyle = "rgba(0, 180, 120, 0.6)";
+      ctx.lineWidth = 1.5;
+
+      // North America coastline
+      drawLine([
+        { lat: 49, lng: -125 }, { lat: 48, lng: -125 }, { lat: 47, lng: -124 },
+        { lat: 46, lng: -124 }, { lat: 45, lng: -124 }, { lat: 44, lng: -124 },
+        { lat: 44, lng: -123 }, { lat: 43, lng: -124 }, { lat: 42, lng: -124 },
+        { lat: 41, lng: -124 }, { lat: 40, lng: -124 }, { lat: 39, lng: -124 },
+        { lat: 37, lng: -122 }, { lat: 35, lng: -120 }, { lat: 33, lng: -117 },
+        { lat: 32, lng: -117 }, { lat: 31, lng: -117 }, { lat: 30, lng: -118 },
+        { lat: 28, lng: -97 }, { lat: 27, lng: -97 }, { lat: 26, lng: -97 },
+        { lat: 25, lng: -97 }, { lat: 25, lng: -80 }, { lat: 26, lng: -80 },
+        { lat: 27, lng: -80 }, { lat: 28, lng: -80 }, { lat: 30, lng: -81 },
+        { lat: 32, lng: -80 }, { lat: 34, lng: -76 }, { lat: 36, lng: -75 },
+        { lat: 38, lng: -75 }, { lat: 40, lng: -74 }, { lat: 42, lng: -71 },
+        { lat: 45, lng: -67 }, { lat: 47, lng: -66 }, { lat: 48, lng: -66 },
+      ]);
+
+      // Greenland
+      drawLine([
+        { lat: 83, lng: -40 }, { lat: 83, lng: -20 }, { lat: 82, lng: -10 },
+        { lat: 80, lng: -15 }, { lat: 79, lng: -30 }, { lat: 77, lng: -45 },
+        { lat: 75, lng: -50 }, { lat: 73, lng: -40 }, { lat: 72, lng: -30 },
+      ]);
+
+      // South America
+      drawLine([
+        { lat: 13, lng: -72 }, { lat: 12, lng: -70 }, { lat: 10, lng: -68 },
+        { lat: 8, lng: -70 }, { lat: 5, lng: -67 }, { lat: 3, lng: -60 },
+        { lat: 1, lng: -50 }, { lat: 0, lng: -51 }, { lat: -2, lng: -50 },
+        { lat: -5, lng: -45 }, { lat: -10, lng: -40 }, { lat: -15, lng: -40 },
+        { lat: -20, lng: -42 }, { lat: -25, lng: -48 }, { lat: -28, lng: -54 },
+        { lat: -30, lng: -55 }, { lat: -32, lng: -55 }, { lat: -33, lng: -56 },
+      ]);
+
+      // Europe
+      drawLine([
+        { lat: 71, lng: -10 }, { lat: 70, lng: 0 }, { lat: 69, lng: 10 },
+        { lat: 68, lng: 20 }, { lat: 66, lng: 25 }, { lat: 64, lng: 20 },
+        { lat: 62, lng: 5 }, { lat: 61, lng: -3 }, { lat: 60, lng: -5 },
+        { lat: 58, lng: 0 }, { lat: 56, lng: 5 }, { lat: 55, lng: 10 },
+        { lat: 54, lng: 5 }, { lat: 53, lng: 0 }, { lat: 52, lng: -2 },
+        { lat: 51, lng: 0 }, { lat: 50, lng: 5 }, { lat: 50, lng: 10 },
+        { lat: 48, lng: 5 }, { lat: 46, lng: 5 }, { lat: 44, lng: 7 },
+        { lat: 43, lng: 8 }, { lat: 42, lng: 5 }, { lat: 41, lng: 0 },
+        { lat: 40, lng: -5 }, { lat: 40, lng: -8 }, { lat: 42, lng: -8 },
+      ]);
+
+      // Africa
+      drawLine([
+        { lat: 37, lng: 0 }, { lat: 36, lng: 5 }, { lat: 35, lng: 10 },
+        { lat: 34, lng: 15 }, { lat: 33, lng: 20 }, { lat: 32, lng: 25 },
+        { lat: 30, lng: 30 }, { lat: 28, lng: 33 }, { lat: 25, lng: 32 },
+        { lat: 22, lng: 31 }, { lat: 20, lng: 30 }, { lat: 18, lng: 28 },
+        { lat: 15, lng: 25 }, { lat: 12, lng: 22 }, { lat: 10, lng: 15 },
+        { lat: 8, lng: 12 }, { lat: 5, lng: 15 }, { lat: 3, lng: 18 },
+        { lat: 0, lng: 20 }, { lat: -3, lng: 25 }, { lat: -5, lng: 28 },
+        { lat: -8, lng: 32 }, { lat: -10, lng: 35 }, { lat: -12, lng: 38 },
+        { lat: -15, lng: 40 }, { lat: -18, lng: 40 }, { lat: -22, lng: 37 },
+        { lat: -28, lng: 30 }, { lat: -32, lng: 25 }, { lat: -35, lng: 20 },
+      ]);
+
+      // Middle East / Western Asia
+      drawLine([
+        { lat: 42, lng: 35 }, { lat: 40, lng: 40 }, { lat: 38, lng: 45 },
+        { lat: 35, lng: 50 }, { lat: 32, lng: 52 }, { lat: 28, lng: 48 },
+        { lat: 25, lng: 45 }, { lat: 24, lng: 48 }, { lat: 23, lng: 52 },
+      ]);
+
+      // India
+      drawLine([
+        { lat: 35, lng: 68 }, { lat: 33, lng: 75 }, { lat: 32, lng: 80 },
+        { lat: 30, lng: 85 }, { lat: 28, lng: 85 }, { lat: 25, lng: 87 },
+        { lat: 23, lng: 88 }, { lat: 20, lng: 88 }, { lat: 18, lng: 83 },
+        { lat: 16, lng: 80 }, { lat: 15, lng: 73 }, { lat: 16, lng: 68 },
+      ]);
+
+      // Southeast Asia
+      drawLine([
+        { lat: 22, lng: 100 }, { lat: 20, lng: 105 }, { lat: 18, lng: 110 },
+        { lat: 15, lng: 108 }, { lat: 12, lng: 108 }, { lat: 10, lng: 105 },
+        { lat: 8, lng: 100 }, { lat: 6, lng: 98 },
+      ]);
+
+      // China
+      drawLine([
+        { lat: 53, lng: 120 }, { lat: 50, lng: 125 }, { lat: 48, lng: 130 },
+        { lat: 45, lng: 132 }, { lat: 42, lng: 130 }, { lat: 40, lng: 125 },
+        { lat: 38, lng: 120 }, { lat: 35, lng: 118 }, { lat: 32, lng: 120 },
+        { lat: 30, lng: 122 }, { lat: 28, lng: 118 }, { lat: 25, lng: 115 },
+      ]);
+
+      // Japan
+      drawLine([
+        { lat: 45, lng: 140 }, { lat: 43, lng: 142 }, { lat: 41, lng: 142 },
+        { lat: 39, lng: 140 }, { lat: 37, lng: 138 }, { lat: 35, lng: 136 },
+        { lat: 34, lng: 134 },
+      ]);
+
+      // Australia
+      drawLine([
+        { lat: -10, lng: 130 }, { lat: -12, lng: 135 }, { lat: -15, lng: 138 },
+        { lat: -18, lng: 140 }, { lat: -22, lng: 142 }, { lat: -28, lng: 145 },
+        { lat: -34, lng: 151 }, { lat: -35, lng: 148 }, { lat: -33, lng: 145 },
+        { lat: -30, lng: 135 }, { lat: -25, lng: 128 }, { lat: -18, lng: 122 },
+        { lat: -15, lng: 128 }, { lat: -12, lng: 133 },
+      ]);
+
+      // New Zealand
+      drawLine([
+        { lat: -34, lng: 166 }, { lat: -37, lng: 175 }, { lat: -41, lng: 172 },
+        { lat: -46, lng: 168 }, { lat: -47, lng: 166 },
+      ]);
+
+      // Russia
+      drawLine([
+        { lat: 70, lng: 30 }, { lat: 68, lng: 50 }, { lat: 66, lng: 80 },
+        { lat: 65, lng: 110 }, { lat: 66, lng: 140 }, { lat: 68, lng: 160 },
+        { lat: 70, lng: 170 },
+      ]);
+
+      // Grid overlay (subtle)
+      ctx.strokeStyle = "rgba(0, 200, 100, 0.03)";
       ctx.lineWidth = 1;
-      
-      // Major continents/coastlines (simplified)
-      const coastlines = [
-        // North America
-        { lat: 49, lng: -95 },
-        { lat: 45, lng: -75 },
-        { lat: 40, lng: -75 },
-        { lat: 35, lng: -81 },
-        { lat: 30, lng: -85 },
-        { lat: 25, lng: -80 },
-        { lat: 25, lng: -97 },
-        { lat: 30, lng: -97 },
-        { lat: 35, lng: -100 },
-        { lat: 40, lng: -105 },
-        { lat: 45, lng: -110 },
-        { lat: 49, lng: -125 },
-        
-        // South America
-        { lat: 12, lng: -75 },
-        { lat: 5, lng: -60 },
-        { lat: 0, lng: -55 },
-        { lat: -10, lng: -50 },
-        { lat: -25, lng: -50 },
-        { lat: -35, lng: -57 },
-        
-        // Europe
-        { lat: 60, lng: 25 },
-        { lat: 55, lng: 35 },
-        { lat: 50, lng: 30 },
-        { lat: 48, lng: 5 },
-        { lat: 43, lng: 0 },
-        { lat: 40, lng: 10 },
-        
-        // Africa
-        { lat: 35, lng: 10 },
-        { lat: 30, lng: 35 },
-        { lat: 20, lng: 40 },
-        { lat: 0, lng: 35 },
-        { lat: -10, lng: 35 },
-        { lat: -25, lng: 30 },
-        { lat: -35, lng: 20 },
-        
-        // Asia
-        { lat: 55, lng: 60 },
-        { lat: 50, lng: 90 },
-        { lat: 45, lng: 120 },
-        { lat: 35, lng: 140 },
-        { lat: 25, lng: 120 },
-        { lat: 15, lng: 100 },
-        { lat: 5, lng: 95 },
-        
-        // Australia
-        { lat: -12, lng: 130 },
-        { lat: -25, lng: 135 },
-        { lat: -35, lng: 150 },
-      ];
-
-      for (let i = 0; i < coastlines.length; i++) {
-        const current = coastlines[i];
-        const pos = toCanvasCoords(current.lat, current.lng);
-        
-        if (i === 0) {
-          ctx.beginPath();
-          ctx.moveTo(pos.x, pos.y);
-        } else {
-          ctx.lineTo(pos.x, pos.y);
-        }
-      }
-      ctx.stroke();
-
-      // Draw country borders (latitude/longitude lines that form rough borders)
-      ctx.strokeStyle = "rgba(0, 100, 80, 0.25)";
-      ctx.lineWidth = 0.5;
-      
-      // Horizontal latitude lines
-      for (let lat = -90; lat <= 90; lat += 30) {
+      for (let i = 0; i < canvas.width; i += 50) {
         ctx.beginPath();
-        const startPos = toCanvasCoords(lat, -180);
-        const endPos = toCanvasCoords(lat, 180);
-        ctx.moveTo(startPos.x, startPos.y);
-        ctx.lineTo(endPos.x, endPos.y);
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
         ctx.stroke();
       }
-      
-      // Vertical longitude lines
-      for (let lng = -180; lng <= 180; lng += 30) {
+      for (let i = 0; i < canvas.height; i += 50) {
         ctx.beginPath();
-        const startPos = toCanvasCoords(90, lng);
-        const endPos = toCanvasCoords(-90, lng);
-        ctx.moveTo(startPos.x, startPos.y);
-        ctx.lineTo(endPos.x, endPos.y);
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
         ctx.stroke();
       }
 
