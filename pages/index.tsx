@@ -113,10 +113,115 @@ export default function Home() {
     let animationFrame: number;
     let time = 0;
 
+    const toCanvasCoords = (lat: number, lng: number) => {
+      const x = ((lng + 180) / 360) * canvas.width;
+      const y =
+        ((90 - lat) / 180) *
+        canvas.height;
+      return { x, y };
+    };
+
     const drawMap = () => {
       // Dark background
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw simplified world map coastlines
+      ctx.strokeStyle = "rgba(0, 150, 100, 0.4)";
+      ctx.lineWidth = 1;
+      
+      // Major continents/coastlines (simplified)
+      const coastlines = [
+        // North America
+        { lat: 49, lng: -95 },
+        { lat: 45, lng: -75 },
+        { lat: 40, lng: -75 },
+        { lat: 35, lng: -81 },
+        { lat: 30, lng: -85 },
+        { lat: 25, lng: -80 },
+        { lat: 25, lng: -97 },
+        { lat: 30, lng: -97 },
+        { lat: 35, lng: -100 },
+        { lat: 40, lng: -105 },
+        { lat: 45, lng: -110 },
+        { lat: 49, lng: -125 },
+        
+        // South America
+        { lat: 12, lng: -75 },
+        { lat: 5, lng: -60 },
+        { lat: 0, lng: -55 },
+        { lat: -10, lng: -50 },
+        { lat: -25, lng: -50 },
+        { lat: -35, lng: -57 },
+        
+        // Europe
+        { lat: 60, lng: 25 },
+        { lat: 55, lng: 35 },
+        { lat: 50, lng: 30 },
+        { lat: 48, lng: 5 },
+        { lat: 43, lng: 0 },
+        { lat: 40, lng: 10 },
+        
+        // Africa
+        { lat: 35, lng: 10 },
+        { lat: 30, lng: 35 },
+        { lat: 20, lng: 40 },
+        { lat: 0, lng: 35 },
+        { lat: -10, lng: 35 },
+        { lat: -25, lng: 30 },
+        { lat: -35, lng: 20 },
+        
+        // Asia
+        { lat: 55, lng: 60 },
+        { lat: 50, lng: 90 },
+        { lat: 45, lng: 120 },
+        { lat: 35, lng: 140 },
+        { lat: 25, lng: 120 },
+        { lat: 15, lng: 100 },
+        { lat: 5, lng: 95 },
+        
+        // Australia
+        { lat: -12, lng: 130 },
+        { lat: -25, lng: 135 },
+        { lat: -35, lng: 150 },
+      ];
+
+      for (let i = 0; i < coastlines.length; i++) {
+        const current = coastlines[i];
+        const pos = toCanvasCoords(current.lat, current.lng);
+        
+        if (i === 0) {
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y);
+        } else {
+          ctx.lineTo(pos.x, pos.y);
+        }
+      }
+      ctx.stroke();
+
+      // Draw country borders (latitude/longitude lines that form rough borders)
+      ctx.strokeStyle = "rgba(0, 100, 80, 0.25)";
+      ctx.lineWidth = 0.5;
+      
+      // Horizontal latitude lines
+      for (let lat = -90; lat <= 90; lat += 30) {
+        ctx.beginPath();
+        const startPos = toCanvasCoords(lat, -180);
+        const endPos = toCanvasCoords(lat, 180);
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(endPos.x, endPos.y);
+        ctx.stroke();
+      }
+      
+      // Vertical longitude lines
+      for (let lng = -180; lng <= 180; lng += 30) {
+        ctx.beginPath();
+        const startPos = toCanvasCoords(90, lng);
+        const endPos = toCanvasCoords(-90, lng);
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(endPos.x, endPos.y);
+        ctx.stroke();
+      }
 
       // Grid overlay
       ctx.strokeStyle = "rgba(0, 200, 100, 0.03)";
@@ -149,15 +254,6 @@ export default function Home() {
         );
         ctx.stroke();
       }
-
-      // Convert lat/lng to canvas coordinates (simple mercator projection)
-      const toCanvasCoords = (lat: number, lng: number) => {
-        const x = ((lng + 180) / 360) * canvas.width;
-        const y =
-          ((90 - lat) / 180) *
-          canvas.height;
-        return { x, y };
-      };
 
       const userPos = toCanvasCoords(
         data.geolocation!.latitude,
