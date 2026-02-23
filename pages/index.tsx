@@ -32,6 +32,7 @@ export default function Home() {
   const [greeting, setGreeting] = useState("Scanning...");
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showEmailPopup, setShowEmailPopup] = useState(false);
+  const [popupDismissed, setPopupDismissed] = useState(false);
   const [email, setEmail] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -133,19 +134,25 @@ export default function Home() {
 
       setScrollProgress(progress);
 
-      if (progress > 0.5 && !showEmailPopup) {
+      if (progress > 0.5 && !showEmailPopup && !popupDismissed) {
         setShowEmailPopup(true);
       }
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [showEmailPopup]);
+  }, [showEmailPopup, popupDismissed]);
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     alert(`Email captured: ${email}`);
     setShowEmailPopup(false);
+    setPopupDismissed(true);
+  };
+
+  const handleClosePopup = () => {
+    setShowEmailPopup(false);
+    setPopupDismissed(true);
   };
 
   if (loading) {
@@ -174,10 +181,47 @@ export default function Home() {
           0%, 100% { opacity: 0.5; }
           50% { opacity: 1; }
         }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        @keyframes particle {
+          0% { opacity: 0; transform: translateY(0) scale(0); }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-100px) scale(1); }
+        }
         .fadeIn { animation: fadeIn 0.8s ease-out; }
         .slideUp { animation: slideUp 0.6s ease-out; }
         .pulse { animation: pulse 2s ease-in-out infinite; }
+        .floating { animation: float 3s ease-in-out infinite; }
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(0, 200, 255, 0.3); }
+          50% { box-shadow: 0 0 40px rgba(0, 200, 255, 0.6); }
+        }
+        .glow { animation: glow 3s ease-in-out infinite; }
       `}</style>
+
+      {/* Animated Background */}
+      <div style={styles.backgroundWrapper}>
+        <svg style={styles.backgroundSVG} viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0a0e27" />
+              <stop offset="50%" stopColor="#1a1a3e" />
+              <stop offset="100%" stopColor="#0f1a2e" />
+            </linearGradient>
+            <filter id="blur">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+            </filter>
+          </defs>
+          <rect width="1000" height="1000" fill="url(#grad1)" />
+          <circle cx="100" cy="100" r="200" fill="#0099ff" opacity="0.05" filter="url(#blur)" />
+          <circle cx="800" cy="800" r="300" fill="#ff006e" opacity="0.05" filter="url(#blur)" />
+          <circle cx="500" cy="500" r="250" fill="#00d9ff" opacity="0.03" filter="url(#blur)" />
+        </svg>
+        <div style={styles.parallaxOverlay} />
+      </div>
 
       {/* Hero Section */}
       <section style={styles.hero}>
@@ -185,113 +229,172 @@ export default function Home() {
           {greeting}
         </h1>
         <p style={styles.subheading}>
-          Your privacy is being exposed right now. Here's how.
+          Your privacy is being exploited right now. See exactly how.
         </p>
       </section>
+
+      {/* Spacing */}
+      <section style={styles.spacer} />
 
       {/* IP Location Section */}
       <section style={styles.section} className="slideUp">
-        <h2 style={styles.sectionTitle}>Your Location is Exposed</h2>
-        <div style={styles.card}>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>IP Address</span>
-            <span style={styles.value}>{data?.ip}</span>
+        <div style={styles.sectionContent}>
+          <div style={styles.sectionLabel}>EXPOSED DATA #1</div>
+          <h2 style={styles.sectionTitle}>Your Location is Tracked</h2>
+          <p style={styles.sectionDescription}>
+            Every website knows exactly where you are. Your ISP broadcasts it. Your device confirms it.
+          </p>
+          
+          <div style={styles.card}>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>IP Address</span>
+              <span style={styles.value}>{data?.ip}</span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Location</span>
+              <span style={styles.value}>
+                {data?.geolocation?.city}, {data?.geolocation?.country}
+              </span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Exact Coordinates</span>
+              <span style={styles.value}>
+                {data?.geolocation?.latitude.toFixed(4)}, {data?.geolocation?.longitude.toFixed(4)}
+              </span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Internet Provider</span>
+              <span style={styles.value}>{data?.geolocation?.isp}</span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Organization</span>
+              <span style={styles.value}>{data?.geolocation?.org || "Unknown"}</span>
+            </div>
           </div>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Location</span>
-            <span style={styles.value}>
-              {data?.geolocation?.city}, {data?.geolocation?.country}
-            </span>
-          </div>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Coordinates</span>
-            <span style={styles.value}>
-              {data?.geolocation?.latitude.toFixed(4)},
-              {data?.geolocation?.longitude.toFixed(4)}
-            </span>
-          </div>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Internet Provider</span>
-            <span style={styles.value}>{data?.geolocation?.isp}</span>
+
+          <div style={styles.warning}>
+            ⚠️ Your ISP knows every website you visit. Even a VPN can't hide this through WebRTC leaks.
           </div>
         </div>
-        <p style={styles.explanation}>
-          Your ISP knows every site you visit. Websites know your exact location
-          from your IP. Even a VPN can leak this data through WebRTC.
-        </p>
       </section>
+
+      {/* Spacing */}
+      <section style={styles.spacer} />
 
       {/* Browser Fingerprint Section */}
       <section style={styles.section} className="slideUp">
-        <h2 style={styles.sectionTitle}>You're Uniquely Identifiable</h2>
-        <div style={styles.card}>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Browser</span>
-            <span style={styles.value}>{data?.fingerprint.browser}</span>
+        <div style={styles.sectionContent}>
+          <div style={styles.sectionLabel}>EXPOSED DATA #2</div>
+          <h2 style={styles.sectionTitle}>You're Uniquely Identifiable</h2>
+          <p style={styles.sectionDescription}>
+            This combination of traits is almost unique to you across the entire internet.
+          </p>
+          
+          <div style={styles.card}>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Browser Signature</span>
+              <span style={styles.value}>{data?.fingerprint.browser}</span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Operating System</span>
+              <span style={styles.value}>{data?.fingerprint.os}</span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Screen Resolution</span>
+              <span style={styles.value}>{data?.fingerprint.screen}</span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Timezone</span>
+              <span style={styles.value}>{data?.fingerprint.timezone}</span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Installed System Fonts</span>
+              <span style={styles.value}>{data?.fingerprint.fonts} fonts</span>
+            </div>
           </div>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Operating System</span>
-            <span style={styles.value}>{data?.fingerprint.os}</span>
-          </div>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Screen Resolution</span>
-            <span style={styles.value}>{data?.fingerprint.screen}</span>
-          </div>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Timezone</span>
-            <span style={styles.value}>{data?.fingerprint.timezone}</span>
-          </div>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Installed Fonts</span>
-            <span style={styles.value}>{data?.fingerprint.fonts}</span>
+
+          <div style={styles.warning}>
+            ⚠️ 1 in 10 million browsers have your exact fingerprint combination. You're permanently tracked.
           </div>
         </div>
-        <p style={styles.explanation}>
-          This combination makes you 1 in millions of users. Websites use this
-          to track you across the internet without cookies.
-        </p>
       </section>
+
+      {/* Spacing */}
+      <section style={styles.spacer} />
 
       {/* Stored Data Section */}
       <section style={styles.section} className="slideUp">
-        <h2 style={styles.sectionTitle}>Your Data is Being Stored</h2>
-        <div style={styles.card}>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Cookies Stored</span>
-            <span style={styles.value}>{data?.cookies}</span>
+        <div style={styles.sectionContent}>
+          <div style={styles.sectionLabel}>EXPOSED DATA #3</div>
+          <h2 style={styles.sectionTitle}>Your Data is Being Harvested</h2>
+          <p style={styles.sectionDescription}>
+            Websites store persistent tracking tokens on your device. They use these to build your profile.
+          </p>
+          
+          <div style={styles.card}>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Cookies Stored</span>
+              <span style={styles.value}>{data?.cookies}</span>
+            </div>
+            <div style={styles.dataPoint}>
+              <span style={styles.label}>Local Storage Items</span>
+              <span style={styles.value}>{data?.localStorage}</span>
+            </div>
           </div>
-          <div style={styles.dataPoint}>
-            <span style={styles.label}>Local Storage Items</span>
-            <span style={styles.value}>{data?.localStorage}</span>
+
+          <div style={styles.warning}>
+            ⚠️ These tracking IDs follow you across the entire internet. They build a complete profile of your behavior.
           </div>
         </div>
-        <p style={styles.explanation}>
-          Websites store persistent IDs on your device. These tracking tokens
-          build a complete profile of your behavior across the internet.
-        </p>
       </section>
 
-      {/* The Problem Section */}
+      {/* Spacing */}
+      <section style={styles.spacer} />
+
+      {/* The Real Problem */}
       <section style={styles.section} className="slideUp">
-        <h2 style={styles.sectionTitle}>The Problem</h2>
-        <ul style={styles.list}>
-          <li>Your ISP is selling your browsing data</li>
-          <li>Ad networks track you across 1000s of websites</li>
-          <li>Data brokers are selling your profile to strangers</li>
-          <li>Your real IP is exposed even behind a VPN</li>
-          <li>Browser fingerprinting works without cookies</li>
-          <li>No privacy laws protect you in most countries</li>
-        </ul>
+        <div style={styles.sectionContent}>
+          <div style={styles.sectionLabel}>THE REALITY</div>
+          <h2 style={styles.sectionTitle}>What This Means For You</h2>
+          
+          <div style={styles.problemGrid}>
+            <div style={styles.problemCard}>
+              <div style={styles.problemIcon}>📊</div>
+              <div style={styles.problemTitle}>Your Profile is Sold</div>
+              <p>Data brokers sell your information to advertisers, landlords, employers, and strangers.</p>
+            </div>
+            
+            <div style={styles.problemCard}>
+              <div style={styles.problemIcon}>👁️</div>
+              <div style={styles.problemTitle}>Constant Surveillance</div>
+              <p>Ad networks track you across 10,000+ websites simultaneously, building a complete profile.</p>
+            </div>
+            
+            <div style={styles.problemCard}>
+              <div style={styles.problemIcon}>🔓</div>
+              <div style={styles.problemTitle}>VPN Doesn't Help</div>
+              <p>Browser fingerprinting and WebRTC leaks expose your real IP even behind a VPN.</p>
+            </div>
+            
+            <div style={styles.problemCard}>
+              <div style={styles.problemIcon}>⚡</div>
+              <div style={styles.problemTitle}>No Privacy Laws</div>
+              <p>Most countries don't protect you. Companies can collect and sell your data legally.</p>
+            </div>
+          </div>
+        </div>
       </section>
+
+      {/* Spacing */}
+      <section style={styles.spacer} />
 
       {/* Email Popup */}
       {showEmailPopup && (
         <div style={styles.popupOverlay}>
           <div style={styles.popup} className="slideUp">
-            <h3 style={styles.popupTitle}>Protect Your Privacy</h3>
+            <h3 style={styles.popupTitle}>Get Your Full Privacy Report</h3>
             <p style={styles.popupText}>
-              Get your full privacy report and see exactly what's exposed about
-              you.
+              See exactly what's exposed about you and get a personalized action plan.
             </p>
             <form onSubmit={handleEmailSubmit} style={styles.form}>
               <input
@@ -303,11 +406,11 @@ export default function Home() {
                 style={styles.input}
               />
               <button type="submit" style={styles.submitButton}>
-                Get Full Report
+                Get Report →
               </button>
             </form>
             <button
-              onClick={() => setShowEmailPopup(false)}
+              onClick={handleClosePopup}
               style={styles.closeButton}
             >
               ✕
@@ -316,19 +419,23 @@ export default function Home() {
         </div>
       )}
 
+      {/* Spacing */}
+      <section style={styles.spacer} />
+
       {/* CTA Section */}
       <section style={styles.ctaSection} className="slideUp">
-        <h2 style={styles.ctaTitle}>We Can Fix This</h2>
-        <p style={styles.ctaText}>
-          Real solutions to protect your privacy, secure your data, and take
-          back control.
-        </p>
-        <button style={styles.ctaButton}>See How We Fix This</button>
+        <div style={styles.ctaContent}>
+          <h2 style={styles.ctaTitle}>We Can Fix This</h2>
+          <p style={styles.ctaText}>
+            Real solutions to take back control of your privacy, secure your data, and stop being tracked.
+          </p>
+          <button style={styles.ctaButton}>See How We Fix This →</button>
+        </div>
       </section>
 
       {/* Footer */}
       <footer style={styles.footer}>
-        <p>Your privacy matters. Let's protect it together.</p>
+        <p>Your privacy is a right. Let's protect it together.</p>
       </footer>
     </div>
   );
@@ -336,11 +443,37 @@ export default function Home() {
 
 const styles = {
   container: {
-    background: "#ffffff",
+    background: "#0a0e27",
     minHeight: "100vh",
     fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-    color: "#1a1a1a",
+    color: "#e0e0e0",
     overflow: "hidden",
+    position: "relative" as const,
+  } as React.CSSProperties,
+
+  backgroundWrapper: {
+    position: "fixed" as const,
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 0,
+    pointerEvents: "none",
+  } as React.CSSProperties,
+
+  backgroundSVG: {
+    width: "100%",
+    height: "100%",
+  } as React.CSSProperties,
+
+  parallaxOverlay: {
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    background:
+      "radial-gradient(circle at 20% 50%, rgba(0, 200, 255, 0.1) 0%, transparent 50%)",
   } as React.CSSProperties,
 
   loadingScreen: {
@@ -350,98 +483,158 @@ const styles = {
     justifyContent: "center",
     minHeight: "100vh",
     gap: "20px",
+    position: "relative" as const,
+    zIndex: 1,
   } as React.CSSProperties,
 
   loadingDot: {
     width: "12px",
     height: "12px",
     borderRadius: "50%",
-    backgroundColor: "#0066ff",
+    backgroundColor: "#00d9ff",
     animation: "pulse 2s ease-in-out infinite",
   } as React.CSSProperties,
 
   hero: {
-    height: "100vh",
+    position: "relative" as const,
+    zIndex: 1,
+    minHeight: "100vh",
     display: "flex",
     flexDirection: "column" as const,
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center" as const,
     padding: "40px 20px",
-    background: "linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)",
   } as React.CSSProperties,
 
   greeting: {
-    fontSize: "64px",
+    fontSize: "72px",
     fontWeight: "700",
     margin: "0 0 20px",
-    maxWidth: "800px",
-    lineHeight: "1.2",
+    maxWidth: "900px",
+    lineHeight: "1.1",
+    background: "linear-gradient(45deg, #00d9ff, #0099ff)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
   } as React.CSSProperties,
 
   subheading: {
-    fontSize: "20px",
-    color: "#666",
+    fontSize: "24px",
+    color: "#aaa",
     margin: "0",
-    maxWidth: "600px",
+    maxWidth: "700px",
     fontWeight: "400",
+    lineHeight: "1.4",
+  } as React.CSSProperties,
+
+  spacer: {
+    position: "relative" as const,
+    zIndex: 1,
+    height: "80px",
   } as React.CSSProperties,
 
   section: {
-    padding: "100px 40px",
-    maxWidth: "900px",
+    position: "relative" as const,
+    zIndex: 1,
+    padding: "120px 40px",
+    maxWidth: "1000px",
     margin: "0 auto",
   } as React.CSSProperties,
 
-  sectionTitle: {
-    fontSize: "42px",
+  sectionContent: {
+    maxWidth: "700px",
+  } as React.CSSProperties,
+
+  sectionLabel: {
+    fontSize: "12px",
+    color: "#00d9ff",
     fontWeight: "700",
-    margin: "0 0 40px",
-    color: "#1a1a1a",
+    marginBottom: "12px",
+    textTransform: "uppercase" as const,
+    letterSpacing: "2px",
+  } as React.CSSProperties,
+
+  sectionTitle: {
+    fontSize: "52px",
+    fontWeight: "700",
+    margin: "0 0 16px",
+    color: "#ffffff",
+    lineHeight: "1.1",
+  } as React.CSSProperties,
+
+  sectionDescription: {
+    fontSize: "18px",
+    color: "#aaa",
+    lineHeight: "1.6",
+    margin: "0 0 32px",
   } as React.CSSProperties,
 
   card: {
-    background: "#f8f8f8",
+    background: "rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(0, 217, 255, 0.2)",
     borderRadius: "12px",
     padding: "32px",
     marginBottom: "24px",
+    backdropFilter: "blur(10px)",
   } as React.CSSProperties,
 
   dataPoint: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "12px 0",
-    borderBottom: "1px solid #eee",
+    padding: "16px 0",
+    borderBottom: "1px solid rgba(0, 217, 255, 0.1)",
   } as React.CSSProperties,
 
   label: {
     fontSize: "14px",
-    color: "#666",
+    color: "#888",
     fontWeight: "500",
   } as React.CSSProperties,
 
   value: {
     fontSize: "16px",
     fontWeight: "600",
-    color: "#0066ff",
+    color: "#00d9ff",
     fontFamily: "monospace",
+    textAlign: "right" as const,
   } as React.CSSProperties,
 
-  explanation: {
-    fontSize: "16px",
-    color: "#666",
+  warning: {
+    background: "rgba(255, 100, 100, 0.1)",
+    border: "1px solid rgba(255, 100, 100, 0.3)",
+    borderRadius: "8px",
+    padding: "16px",
+    fontSize: "14px",
+    color: "#ff9999",
     lineHeight: "1.6",
-    margin: "0",
-    maxWidth: "600px",
   } as React.CSSProperties,
 
-  list: {
-    fontSize: "18px",
-    color: "#1a1a1a",
-    lineHeight: "2",
-    paddingLeft: "20px",
-    maxWidth: "600px",
+  problemGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "20px",
+    marginTop: "40px",
+  } as React.CSSProperties,
+
+  problemCard: {
+    background: "rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(0, 217, 255, 0.15)",
+    borderRadius: "12px",
+    padding: "24px",
+    backdropFilter: "blur(10px)",
+  } as React.CSSProperties,
+
+  problemIcon: {
+    fontSize: "32px",
+    marginBottom: "12px",
+  } as React.CSSProperties,
+
+  problemTitle: {
+    fontSize: "16px",
+    fontWeight: "700",
+    margin: "0 0 8px",
+    color: "#ffffff",
   } as React.CSSProperties,
 
   popupOverlay: {
@@ -450,32 +643,34 @@ const styles = {
     left: 0,
     width: "100%",
     height: "100%",
-    background: "rgba(0, 0, 0, 0.5)",
+    background: "rgba(0, 0, 0, 0.7)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 1000,
+    zIndex: 10000,
   } as React.CSSProperties,
 
   popup: {
-    background: "#ffffff",
+    background: "#1a1a2e",
     borderRadius: "16px",
     padding: "40px",
-    maxWidth: "400px",
+    maxWidth: "420px",
     width: "90%",
-    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.2)",
+    boxShadow: "0 20px 60px rgba(0, 217, 255, 0.2)",
     position: "relative" as const,
+    border: "1px solid rgba(0, 217, 255, 0.2)",
   } as React.CSSProperties,
 
   popupTitle: {
     fontSize: "28px",
     fontWeight: "700",
     margin: "0 0 12px",
+    color: "#ffffff",
   } as React.CSSProperties,
 
   popupText: {
     fontSize: "16px",
-    color: "#666",
+    color: "#aaa",
     margin: "0 0 24px",
     lineHeight: "1.5",
   } as React.CSSProperties,
@@ -489,21 +684,23 @@ const styles = {
   input: {
     padding: "12px 16px",
     borderRadius: "8px",
-    border: "1px solid #ddd",
+    border: "1px solid rgba(0, 217, 255, 0.3)",
     fontSize: "14px",
     fontFamily: "inherit",
+    background: "rgba(255, 255, 255, 0.05)",
+    color: "#ffffff",
   } as React.CSSProperties,
 
   submitButton: {
     padding: "14px 20px",
-    background: "#0066ff",
-    color: "#ffffff",
+    background: "linear-gradient(45deg, #00d9ff, #0099ff)",
+    color: "#000",
     border: "none",
     borderRadius: "8px",
     fontSize: "16px",
-    fontWeight: "600",
+    fontWeight: "700",
     cursor: "pointer",
-    transition: "background 0.2s",
+    transition: "transform 0.2s",
   } as React.CSSProperties,
 
   closeButton: {
@@ -514,35 +711,41 @@ const styles = {
     border: "none",
     fontSize: "24px",
     cursor: "pointer",
-    color: "#999",
+    color: "#666",
   } as React.CSSProperties,
 
   ctaSection: {
-    padding: "100px 40px",
+    position: "relative" as const,
+    zIndex: 1,
+    padding: "120px 40px",
     textAlign: "center" as const,
-    background: "#0066ff",
-    color: "#ffffff",
+  } as React.CSSProperties,
+
+  ctaContent: {
+    maxWidth: "700px",
+    margin: "0 auto",
   } as React.CSSProperties,
 
   ctaTitle: {
-    fontSize: "48px",
+    fontSize: "56px",
     fontWeight: "700",
     margin: "0 0 20px",
+    background: "linear-gradient(45deg, #00d9ff, #00ff88)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
   } as React.CSSProperties,
 
   ctaText: {
     fontSize: "20px",
     margin: "0 0 40px",
-    maxWidth: "600px",
-    marginLeft: "auto",
-    marginRight: "auto",
-    opacity: 0.9,
+    color: "#aaa",
+    lineHeight: "1.6",
   } as React.CSSProperties,
 
   ctaButton: {
-    padding: "16px 48px",
-    background: "#ffffff",
-    color: "#0066ff",
+    padding: "18px 48px",
+    background: "linear-gradient(45deg, #00d9ff, #0099ff)",
+    color: "#000",
     border: "none",
     borderRadius: "8px",
     fontSize: "18px",
@@ -552,10 +755,12 @@ const styles = {
   } as React.CSSProperties,
 
   footer: {
+    position: "relative" as const,
+    zIndex: 1,
     padding: "40px",
     textAlign: "center" as const,
     fontSize: "14px",
-    color: "#999",
-    borderTop: "1px solid #eee",
+    color: "#666",
+    borderTop: "1px solid rgba(0, 217, 255, 0.1)",
   } as React.CSSProperties,
 };
